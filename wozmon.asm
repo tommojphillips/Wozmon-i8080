@@ -31,24 +31,18 @@ RESET:          LXI SP, 02400H
 
 NOTCR:          CPI 08H         ; 'backspace'?
                 JZ BACKSPACE    ; Yes
-
                 CPI 01BH        ; 'ESC'?
                 JZ ESCAPE       ; Yes
-
                 INR C           ; Advance text index
                 JP NEXTCHAR     ; Auto ESC if > 127
 
 ESCAPE:         MVI A, 05CH     ; '\'
-                OUT SIO_WRITE   ; Output it
+                CALL ECHO       ; Output it
 
 GETLINE:        MVI A, CR       ; CR
-                OUT SIO_WRITE   ; Output it
+                CALL ECHO       ; Output it
                 MVI A, LF       ; LF
-                OUT SIO_WRITE   ; Output it
-                MVI A, '>'       ; '>'
-                OUT SIO_WRITE   ; Output it
-                MVI A, ' '       ; ' '
-                OUT SIO_WRITE   ; Output it
+                CALL ECHO       ; Output it                
                 MVI C, 1        ; Initialize text index
 
 BACKSPACE:      DCR C           ; Back up text index
@@ -59,16 +53,16 @@ NEXTCHAR:       IN SIO_STATUS   ; Key ready?
                 JZ NEXTCHAR     ; Loop until ready
                 IN SIO_READ     ; Get character      
                 STAX B          ; Add to text buffer
-                OUT SIO_WRITE   ; Display character
+                CALL ECHO       ; Display character
 
                 CPI CR          ; CR?
                 JNZ NOTCR       ; No
 
                 MVI A, LF       ; LF
-                OUT SIO_WRITE
+                CALL ECHO
 
                 MVI C, 0FFH     ; Reset text index
-                MVI A, 0        ; 0->A
+                MVI A, 0        ; For XAM mode
                 MOV E, A        ; 0->X
 SETMODE:        STA MODE        ; 0 = XAM, ':' = STOR, '.' = BLOCK XAM
 
@@ -96,7 +90,6 @@ NEXTITEM:       LDAX B          ; Get character
                 STA YSAV        ; Save Y for comparison
 
 NEXTHEX:        LDAX B          ; Get character for hex test
-
                 XRI 030H        ; Map digits to $0-9
                 CPI 0AH         ; Digit?
                 JC DIG          ; Yes
@@ -105,23 +98,19 @@ NEXTHEX:        LDAX B          ; Get character for hex test
                 JC NOTHEX       ; No, character not hex
 
 DIG:            STC
-                CMC
-                RAL
-
+                CMC             ; Clear carry
+                RAL             ; Shift left
                 STC
-                CMC
+                CMC             ; Clear carry
                 RAL             ; Hex digit to MSD of A
-                
                 STC
-                CMC
-                RAL
-
+                CMC             ; Clear carry
+                RAL             ; Shift left
                 STC
-                CMC
-                RAL
+                CMC             ; Clear carry
+                RAL             ; Shift left
 
                 MVI E, 04H      ; Shift count
-
 HEXSHIFT:       STC
                 CMC
                 RAL             ; Hex digit left, MSB to carry
@@ -153,7 +142,7 @@ NOTHEX:         LXI H, YSAV     ; Check if L, H empty (no hex digits)
                 CPI ':'         ; Test for store MODE
                 JNZ NOTSTOR
                 
-                LDA 028H        ;ASSEMBLER BUG - LOW '28H' ASSEMBLES TO '09H' - ;LOW         ; LSD’s of hex data
+                LDA 028H        ; ASSEMBLER BUG - LOW '28H' ASSEMBLES TO '09H' - ;LOW         ; LSD’s of hex data
                 
                 LHLD STL        ; Get STORE LOW
                 MVI D, 0
@@ -187,10 +176,10 @@ SETADR:         LDA LOW
 NXTPRNT:        JNZ PRDATA      ; NE means no address to print
                 
                 MVI A, CR       ; CR
-                OUT SIO_WRITE   ; Output it
+                CALL ECHO       ; Output it
                 
                 MVI A, LF       ; LF
-                OUT SIO_WRITE   ; Output it
+                CALL ECHO       ; Output it
                 
                 LDA XAMH        ; ‘Examine index’ high-order byte
                 CALL PRBYTE     ; Output it in hex format
@@ -199,10 +188,10 @@ NXTPRNT:        JNZ PRDATA      ; NE means no address to print
                 CALL PRBYTE     ; Output it in hex format
                 
                 MVI A, ':'      ; ":"
-                OUT SIO_WRITE   ; Output it
+                CALL ECHO       ; Output it
 
 PRDATA:         MVI A, ' '      ; Blank
-                OUT SIO_WRITE   ; Output it
+                CALL ECHO       ; Output it
                 
                 LHLD XAML
                 MVI D, 0
@@ -211,7 +200,7 @@ PRDATA:         MVI A, ' '      ; Blank
                 
                 CALL PRBYTE     ; Output it in hex format
 
-XAMNEXT:        LXI H, MODE     ; 0->MODE (XAM mode)
+XAMNEXT:        LXI H, MODE     ; 0->MODE
                 MVI M, 0
 
                 LDA XAML
@@ -239,20 +228,20 @@ MOD8CHK:        LDA XAML        ; Check low-order ‘examine index’ byte
 PRBYTE:         PUSH PSW        ; Save A for LSD                
                 
                 STC
-                CMC
-                RAR
+                CMC             ; Clear carry
+                RAR             ; Shift right
 
                 STC
-                CMC
-                RAR
+                CMC             ; Clear carry
+                RAR             ; Shift right
 
                 STC
-                CMC
+                CMC             ; Clear carry
                 RAR             ; MSD to LSD position
 
                 STC
-                CMC
-                RAR   
+                CMC             ; Clear carry
+                RAR             ; Shift right   
                 
                 CALL PRHEX      ; Output hex digit
                 POP PSW         ; Restore A
