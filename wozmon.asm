@@ -1,6 +1,9 @@
 ;  The WOZ Monitor for the Apple 1
 ;  Written by Steve Wozniak in 1976
 
+; Adapted instructions for the intel 8080
+; Written by tommojphillips in 2025
+
 ; Page 0 Variables
 
 XAML            SET 0024H           ;  Last "opened" location Low

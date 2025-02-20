@@ -95,10 +95,31 @@ R[JUMP]
 
 # Building
 
-This project uses The Intel 8080 macro assembler by begoon to assemble the binary. see: https://github.com/begoon/asm8080
+This project uses The Intel 8080 macro assembler by begoon to assemble the binary. 
+
+see: https://github.com/begoon/asm8080
 
 Use this command to assemble wozmon for the intel 8080: 
 
 ```
 asm8080.exe wozmon.asm -lwozmon.lst
 ```
+
+
+# Running Wozmon
+
+ The project can be run on the Emu Studio emulator. 
+ 
+  - https://github.com/emustudio/emuStudio/releases/
+  - https://www.emustudio.net/download/
+
+#### Using Emu Studio
+ 
+ - Select `MITS Altair8800`
+ - Open and complie `wozmon.asm` in the source editor
+ - Open the emulator
+ - Open the device, `LSI ADM-3A termimal`
+ - Start the emulator
+
+You should see wozmon start up with the backslash `\`
+
