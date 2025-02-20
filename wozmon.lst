@@ -1,0 +1,311 @@
+     1 			;  The WOZ Monitor for the Apple 1
+     2 			;  Written by Steve Wozniak in 1976
+     3
+     4 			; Page 0 Variables
+     5
+     6      00 24	XAML            SET 0024H           ;  Last "opened" location Low
+     7      00 25	XAMH            SET 0025H           ;  Last "opened" location High
+     8      00 26	STL             SET 0026H           ;  Store address Low
+     9      00 27	STH             SET 0027H           ;  Store address High
+    10      00 28	LOW             SET 0028H           ;  Hex value parsing Low
+    11      00 29	HIGH            SET 0029H           ;  Hex value parsing High
+    12      00 2A	YSAV            SET 002AH           ;  Used to see if hex value is given
+    13      00 2B	MODE            SET 002BH           ;  $00=XAM, $7F=STOR, $AE=BLOCK XAM
+    14
+    15
+    16 			; Other Variables
+    17
+    18      02 00	BUFFER          SET 0200H
+    19
+    20      00 10	SIO_STATUS      SET 010H
+    21      00 11	SIO_WRITE       SET 011H
+    22      00 11	SIO_READ        SET 011H
+    23
+    24      00 0D	CR              SET 0DH
+    25      00 0A	LF              SET 0AH
+    26
+    27      E0 00	                ORG 0E000H
+    28
+    29 E000 31 00 24	RESET:          LXI SP, 02400H
+    30 E003 01 7F 02	                LXI B, BUFFER + 07FH    ; BC =  200H + 7F
+    31
+    32 E006 FE 08	NOTCR:          CPI 08H         ; 'backspace'?
+    33 E008 CA 25 E0	                JZ BACKSPACE    ; Yes
+    34 E00B FE 1B	                CPI 01BH        ; 'ESC'?
+    35 E00D CA 14 E0	                JZ ESCAPE       ; Yes
+    36 E010 0C		                INR C           ; Advance text index
+    37 E011 F2 29 E0	                JP NEXTCHAR     ; Auto ESC if > 127
+    38
+    39 E014 3E 5C	ESCAPE:         MVI A, 05CH     ; '\'
+    40 E016 CD 59 E1	                CALL ECHO       ; Output it
+    41
+    42 E019 3E 0D	GETLINE:        MVI A, CR       ; CR
+    43 E01B CD 59 E1	                CALL ECHO       ; Output it
+    44 E01E 3E 0A	                MVI A, LF       ; LF
+    45 E020 CD 59 E1	                CALL ECHO       ; Output it                
+    46 E023 0E 01	                MVI C, 1        ; Initialize text index
+    47
+    48 E025 0D		BACKSPACE:      DCR C           ; Back up text index
+    49 E026 FA 19 E0	                JM GETLINE      ; Beyond start of line, reinitialize
+    50
+    51 E029 DB 10	NEXTCHAR:       IN SIO_STATUS   ; Key ready?
+    52 E02B FE 02	                CPI 02H
+    53 E02D CA 29 E0	                JZ NEXTCHAR     ; Loop until ready
+    54 E030 DB 11	                IN SIO_READ     ; Get character      
+    55 E032 02		                STAX B          ; Add to text buffer
+    56 E033 CD 59 E1	                CALL ECHO       ; Display character
+    57
+    58 E036 FE 0D	                CPI CR          ; CR?
+    59 E038 C2 06 E0	                JNZ NOTCR       ; No
+    60
+    61 E03B 3E 0A	                MVI A, LF       ; LF
+    62 E03D CD 59 E1	                CALL ECHO
+    63
+    64 E040 0E FF	                MVI C, 0FFH     ; Reset text index
+    65 E042 3E 00	                MVI A, 0        ; For XAM mode
+    66 E044 5F		                MOV E, A        ; 0->X
+    67 E045 32 2B 00	SETMODE:        STA MODE        ; 0 = XAM, ':' = STOR, '.' = BLOCK XAM
+    68
+    69 E048 0C		BLSKIP:         INR C           ; Advance text index
+    70 E049 0A		NEXTITEM:       LDAX B          ; Get character
+    71
+    72 E04A FE 0D	                CPI CR          ; CR?
+    73 E04C CA 19 E0	                JZ GETLINE      ; Yes, done this line
+    74 			                
+    75 E04F FE 2E	                CPI '.'         ; "."?
+    76 E051 DA 48 E0	                JC BLSKIP       ; Skip delimiter
+    77 E054 CA 45 E0	                JZ SETMODE      ; Set BLOCK XAM mode
+    78
+    79 E057 FE 3A	                CPI ':'         ; ":"?
+    80 E059 CA 45 E0	                JZ SETMODE      ; Yes Set STOR mode
+    81
+    82 E05C FE 52	                CPI 'R'         ; "R"?
+    83 E05E CA CC E0	                JZ RUN          ; Yes Run user program
+    84
+    85 E061 7B		                MOV A, E
+    86 E062 32 09 00	                STA LOW         ; 0->L
+    87 E065 32 08 00	                STA HIGH        ; 0->H
+    88 			                
+    89 E068 79		                MOV A, C
+    90 E069 32 2A 00	                STA YSAV        ; Save Y for comparison
+    91
+    92 E06C 0A		NEXTHEX:        LDAX B          ; Get character for hex test
+    93 E06D EE 30	                XRI 030H        ; Map digits to $0-9
+    94 E06F FE 0A	                CPI 0AH         ; Digit?
+    95 E071 DA 7B E0	                JC DIG          ; Yes
+    96 E074 C6 89	                ADI 089H        ; Map letter "A"-"F" to $FA-FF
+    97 E076 FE FA	                CPI 0FAH        ; Hex letter?
+    98 E078 DA A4 E0	                JC NOTHEX       ; No, character not hex
+    99
+   100 E07B 37		DIG:            STC
+   101 E07C 3F		                CMC             ; Clear carry
+   102 E07D 17		                RAL             ; Shift left
+   103 E07E 37		                STC
+   104 E07F 3F		                CMC             ; Clear carry
+   105 E080 17		                RAL             ; Hex digit to MSD of A
+   106 E081 37		                STC
+   107 E082 3F		                CMC             ; Clear carry
+   108 E083 17		                RAL             ; Shift left
+   109 E084 37		                STC
+   110 E085 3F		                CMC             ; Clear carry
+   111 E086 17		                RAL             ; Shift left
+   112
+   113 E087 1E 04	                MVI E, 04H      ; Shift count
+   114 E089 37		HEXSHIFT:       STC
+   115 E08A 3F		                CMC
+   116 E08B 17		                RAL             ; Hex digit left, MSB to carry
+   117
+   118 E08C F5		                PUSH PSW
+   119
+   120 E08D 3A 28 00	                LDA LOW
+   121 E090 17		                RAL             ; Rotate into LSD
+   122 E091 32 28 00	                STA LOW
+   123
+   124 E094 3A 29 00	                LDA HIGH
+   125 E097 17		                RAL             ; Rotate into MSD’s
+   126 E098 32 29 00	                STA HIGH
+   127 			               
+   128 E09B F1		                POP PSW
+   129
+   130 E09C 1D		                DCR E           ; Done 4 shifts?
+   131 E09D C2 89 E0	                JNZ HEXSHIFT    ; No, loop
+   132
+   133 E0A0 0C		                INR C           ; Advance text index
+   134 E0A1 C2 6C E0	                JNZ NEXTHEX     ; Check next character for hex
+   135
+   136 E0A4 21 2A 00	NOTHEX:         LXI H, YSAV     ; Check if L, H empty (no hex digits)
+   137 E0A7 79		                MOV A, C
+   138 E0A8 BE		                CMP M
+   139 E0A9 CA 14 E0	                JZ ESCAPE       ; Yes, generate ESC sequence
+   140 			                
+   141 E0AC 3A 2B 00	                LDA MODE
+   142 E0AF FE 3A	                CPI ':'         ; Test for store MODE
+   143 E0B1 C2 D0 E0	                JNZ NOTSTOR
+   144 			                
+   145 E0B4 3A 28 00	                LDA 028H        ; ASSEMBLER BUG - LOW '28H' ASSEMBLES TO '09H' - ;LOW         ; LSD’s of hex data
+   146 			                
+   147 E0B7 2A 26 00	                LHLD STL        ; Get STORE LOW
+   148 E0BA 16 00	                MVI D, 0
+   149 E0BC 19		                DAD D           ; STL + X
+   150 E0BD 77		                MOV M, A        ; Store at current ‘store index’
+   151 			                
+   152 E0BE 21 26 00	                LXI H, STL      ; Get STORE LOW
+   153 E0C1 34		                INR M           ; Increment store index
+   154 			                
+   155 E0C2 C2 49 E0	                JNZ NEXTITEM    ; Get next item (no carry)
+   156
+   157 E0C5 21 27 00	                LXI H, STH
+   158 E0C8 34		                INR M           ; Add carry to ‘store index’ high order
+   159
+   160 E0C9 C3 49 E0	TONEXTITEM:     JMP NEXTITEM    ; Get next command item
+   161
+   162 E0CC 2A 24 00	RUN:            LHLD XAML       ; Run at current XAM index
+   163 E0CF E9		                PCHL
+   164
+   165 E0D0 FE 00	NOTSTOR:        CPI 0H          ; Test MODE byte
+   166 E0D2 C2 14 E1	                JNZ XAMNEXT     ; 00 for XAM, '.' for BLOCK XAM
+   167 			                
+   168 E0D5 3A 28 00	SETADR:         LDA LOW
+   169 E0D8 32 26 00	                STA STL
+   170 E0DB 32 24 00	                STA XAML
+   171 			                
+   172 E0DE 3A 29 00	                LDA HIGH
+   173 E0E1 32 27 00	                STA STH
+   174 E0E4 32 25 00	                STA XAMH
+   175 			               
+   176 E0E7 C2 05 E1	NXTPRNT:        JNZ PRDATA      ; NE means no address to print
+   177 			                
+   178 E0EA 3E 0D	                MVI A, CR       ; CR
+   179 E0EC CD 59 E1	                CALL ECHO       ; Output it
+   180 			                
+   181 E0EF 3E 0A	                MVI A, LF       ; LF
+   182 E0F1 CD 59 E1	                CALL ECHO       ; Output it
+   183 			                
+   184 E0F4 3A 25 00	                LDA XAMH        ; ‘Examine index’ high-order byte
+   185 E0F7 CD 3D E1	                CALL PRBYTE     ; Output it in hex format
+   186 			                
+   187 E0FA 3A 24 00	                LDA XAML        ; Low-order ‘examine index’ byte
+   188 E0FD CD 3D E1	                CALL PRBYTE     ; Output it in hex format
+   189 			                
+   190 E100 3E 3A	                MVI A, ':'      ; ":"
+   191 E102 CD 59 E1	                CALL ECHO       ; Output it
+   192
+   193 E105 3E 20	PRDATA:         MVI A, ' '      ; Blank
+   194 E107 CD 59 E1	                CALL ECHO       ; Output it
+   195 			                
+   196 E10A 2A 24 00	                LHLD XAML
+   197 E10D 16 00	                MVI D, 0
+   198 E10F 19		                DAD D
+   199 E110 7E		                MOV A, M        ; Get data byte at ‘examine index’
+   200 			                
+   201 E111 CD 3D E1	                CALL PRBYTE     ; Output it in hex format
+   202
+   203 E114 21 2B 00	XAMNEXT:        LXI H, MODE     ; 0->MODE
+   204 E117 36 00	                MVI M, 0
+   205
+   206 E119 3A 24 00	                LDA XAML
+   207 E11C 21 28 00	                LXI H, LOW
+   208 E11F BE		                CMP M           ; Compare ‘examine index’ to hex data
+   209 			                
+   210 E120 3A 25 00	                LDA XAMH
+   211 E123 21 29 00	                LXI H, HIGH
+   212 E126 9E		                SBB M
+   213 			                
+   214 E127 D2 C9 E0	                JNC TONEXTITEM  ; Not less, so no more data to output
+   215 			                
+   216 E12A 21 24 00	                LXI H, XAML
+   217 E12D 34		                INR M
+   218 			                
+   219 E12E C2 35 E1	                JNZ MOD8CHK     ; Increment ‘examine index’
+   220 			                
+   221 E131 21 25 00	                LXI H, XAMH
+   222 E134 34		                INR M
+   223
+   224 E135 3A 24 00	MOD8CHK:        LDA XAML        ; Check low-order ‘examine index’ byte
+   225 E138 E6 07	                ANI 07H         ; For MOD 8=0
+   226 E13A C3 E7 E0	                JMP NXTPRNT     ; Always taken
+   227
+   228 E13D F5		PRBYTE:         PUSH PSW        ; Save A for LSD                
+   229 			                
+   230 E13E 37		                STC
+   231 E13F 3F		                CMC             ; Clear carry
+   232 E140 1F		                RAR             ; Shift right
+   233
+   234 E141 37		                STC
+   235 E142 3F		                CMC             ; Clear carry
+   236 E143 1F		                RAR             ; Shift right
+   237
+   238 E144 37		                STC
+   239 E145 3F		                CMC             ; Clear carry
+   240 E146 1F		                RAR             ; MSD to LSD position
+   241
+   242 E147 37		                STC
+   243 E148 3F		                CMC             ; Clear carry
+   244 E149 1F		                RAR             ; Shift right   
+   245 			                
+   246 E14A CD 4E E1	                CALL PRHEX      ; Output hex digit
+   247 E14D F1		                POP PSW         ; Restore A
+   248
+   249 E14E E6 0F	PRHEX:          ANI 0FH         ; Mask LSD for hex print
+   250 E150 F6 30	                ORI 030H        ; Add "0"
+   251 E152 FE 3A	                CPI 03AH        ; Digit?
+   252 E154 DA 59 E1	                JC ECHO         ; Yes, output it
+   253 E157 C6 07	                ADI 07H         ; Add offset for letter
+   254 E159 D3 11	ECHO:           OUT SIO_WRITE   ; Output character
+   255 E15B C9		                RET             ; Return
+   256
+
+
+*******************************************************************************
+                                 Symbols table
+*******************************************************************************
+
+Names		Types	Values
+-----		-----	------
+XAML		SET	00024h
+XAMH		SET	00025h
+STL		SET	00026h
+STH		SET	00027h
+LOW		SET	00028h
+HIGH		SET	00029h
+YSAV		SET	0002Ah
+MODE		SET	0002Bh
+BUFFER		SET	00200h
+SIO_STATUS	SET	00010h
+SIO_WRITE	SET	00011h
+SIO_READ	SET	00011h
+CR		SET	0000Dh
+LF		SET	0000Ah
+RESET		Label	0E000h
+NOTCR		Label	0E006h
+ESCAPE		Label	0E014h
+GETLINE		Label	0E019h
+BACKSPACE	Label	0E025h
+NEXTCHAR	Label	0E029h
+SETMODE		Label	0E045h
+BLSKIP		Label	0E048h
+NEXTITEM	Label	0E049h
+NEXTHEX		Label	0E06Ch
+DIG		Label	0E07Bh
+HEXSHIFT	Label	0E089h
+NOTHEX		Label	0E0A4h
+TONEXTITEM	Label	0E0C9h
+RUN		Label	0E0CCh
+NOTSTOR		Label	0E0D0h
+SETADR		Label	0E0D5h
+NXTPRNT		Label	0E0E7h
+PRDATA		Label	0E105h
+XAMNEXT		Label	0E114h
+MOD8CHK		Label	0E135h
+PRBYTE		Label	0E13Dh
+PRHEX		Label	0E14Eh
+ECHO		Label	0E159h
+
+Statistics
+----------
+"Name"	= 0
+"EQU"	= 0
+"SET"	= 14
+Labels	= 24
+
+
