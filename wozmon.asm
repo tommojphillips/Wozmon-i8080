@@ -27,7 +27,7 @@ SIO_READ        SET 011H
 CR              SET 0DH
 LF              SET 0AH
 
-                ORG 0E000H
+                ORG 0D000H
 
 RESET:          LXI SP, 02400H
                 LXI B, BUFFER + 07FH    ; BC =  200H + 7F

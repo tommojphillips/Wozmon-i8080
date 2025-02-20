@@ -108,17 +108,27 @@ asm8080.exe wozmon.asm -lwozmon.lst
 
 # Running Wozmon
 
- The project can be run on the Emu Studio emulator. 
+ The project can be run on either my own emulator, or Emu Studio. 
  
+#### Emu Studio
+
   - https://github.com/emustudio/emuStudio/releases/
   - https://www.emustudio.net/download/
 
-#### Using Emu Studio
- 
+  Loading wozmon:
+
  - Select `MITS Altair8800`
  - Open and complie `wozmon.asm` in the source editor
  - Open the emulator
  - Open the device, `LSI ADM-3A termimal`
+ - Start the emulator
+
+#### Altair8800 by tommojphillips
+
+  - https://github.com/tommojphillips/Altair8800/releases/
+
+  Loading wozmon:
+
  - Start the emulator
 
 You should see wozmon start up with the backslash `\`
