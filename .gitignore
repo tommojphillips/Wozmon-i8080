@@ -1,0 +1,4 @@
+*.lst
+*.bin
+wozmon2.asm
+wozmon.s

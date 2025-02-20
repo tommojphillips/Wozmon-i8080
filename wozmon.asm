@@ -1,181 +1,267 @@
 ;  The WOZ Monitor for the Apple 1
 ;  Written by Steve Wozniak in 1976
 
-
 ; Page 0 Variables
 
-XAML            = $24           ;  Last "opened" location Low
-XAMH            = $25           ;  Last "opened" location High
-STL             = $26           ;  Store address Low
-STH             = $27           ;  Store address High
-L               = $28           ;  Hex value parsing Low
-H               = $29           ;  Hex value parsing High
-YSAV            = $2A           ;  Used to see if hex value is given
-MODE            = $2B           ;  $00=XAM, $7F=STOR, $AE=BLOCK XAM
+XAML            SET 0024H           ;  Last "opened" location Low
+XAMH            SET 0025H           ;  Last "opened" location High
+STL             SET 0026H           ;  Store address Low
+STH             SET 0027H           ;  Store address High
+LOW             SET 0028H           ;  Hex value parsing Low
+HIGH            SET 0029H           ;  Hex value parsing High
+YSAV            SET 002AH           ;  Used to see if hex value is given
+MODE            SET 002BH           ;  $00=XAM, $7F=STOR, $AE=BLOCK XAM
 
 
 ; Other Variables
 
-IN              = $0200         ;  Input buffer to $027F
-KBD             = $D010         ;  PIA.A keyboard input
-KBDCR           = $D011         ;  PIA.A keyboard control register
-DSP             = $D012         ;  PIA.B display output register
-DSPCR           = $D013         ;  PIA.B display control register
+BUFFER          SET 0200H
 
-               .org $FF00
-               .export RESET
+SIO_STATUS      SET 010H
+SIO_WRITE       SET 011H
+SIO_READ        SET 011H
 
+CR              SET 0DH
+LF              SET 0AH
 
-RESET:          CLD             ; Clear decimal arithmetic mode.
-                CLI
-                LDY #$7F        ; Mask for DSP data direction register.
-                STY DSP         ; Set it up.
-                LDA #$A7        ; KBD and DSP control register mask.
-                STA KBDCR       ; Enable interrupts, set CA1, CB1, for
-                STA DSPCR       ;  positive edge sense/output mode.
+                ORG 0E000H
 
-NOTCR:          CMP #'_'+$80    ; "_"?
-                BEQ BACKSPACE   ; Yes.
-                CMP #$9B        ; ESC?
-                BEQ ESCAPE      ; Yes.
-                INY             ; Advance text index.
-                BPL NEXTCHAR    ; Auto ESC if > 127.
+RESET:          LXI SP, 02400H
+                LXI B, BUFFER + 07FH    ; BC =  200H + 7F
 
-ESCAPE:         LDA #'\'+$80    ; "\".
-                JSR ECHO        ; Output it.
+NOTCR:          CPI 08H         ; 'backspace'?
+                JZ BACKSPACE    ; Yes
 
-GETLINE:        LDA #$8D        ; CR.
-                JSR ECHO        ; Output it.
-                LDY #$01        ; Initialize text index.
+                CPI 01BH        ; 'ESC'?
+                JZ ESCAPE       ; Yes
 
-BACKSPACE:      DEY             ; Back up text index.
-                BMI GETLINE     ; Beyond start of line, reinitialize.
+                INR C           ; Advance text index
+                JP NEXTCHAR     ; Auto ESC if > 127
 
-NEXTCHAR:       LDA KBDCR       ; Key ready?
-                BPL NEXTCHAR    ; Loop until ready.
-                LDA KBD         ; Load character. B7 should be ‘1’.
-                STA IN,Y        ; Add to text buffer.
-                JSR ECHO        ; Display character.
-                CMP #$8D        ; CR?
-                BNE NOTCR       ; No.
-                LDY #$FF        ; Reset text index.
-                LDA #$00        ; For XAM mode.
-                TAX             ; 0->X.
-SETSTOR:        ASL             ; Leaves $7B if setting STOR mode.
-SETMODE:        STA MODE        ; $00=XAM, $7B=STOR, $AE=BLOCK XAM.
+ESCAPE:         MVI A, 05CH     ; '\'
+                OUT SIO_WRITE   ; Output it
 
-BLSKIP:         INY             ; Advance text index.
-NEXTITEM:       LDA IN,Y        ; Get character.
-                CMP #$8D        ; CR?
-                BEQ GETLINE     ; Yes, done this line.
-                CMP #'.'+$80    ; "."?
-                BCC BLSKIP      ; Skip delimiter.
-                BEQ SETMODE     ; Set BLOCK XAM mode.
-                CMP #':'+$80    ; ":"?
-                BEQ SETSTOR     ; Yes. Set STOR mode.
-                CMP #'R'+$80    ; "R"?
-                BEQ RUN         ; Yes. Run user program.
-                STX L           ; $00->L.
-                STX H           ;  and H.
-                STY YSAV        ; Save Y for comparison.
+GETLINE:        MVI A, CR       ; CR
+                OUT SIO_WRITE   ; Output it
+                MVI A, LF       ; LF
+                OUT SIO_WRITE   ; Output it
+                MVI A, '>'       ; '>'
+                OUT SIO_WRITE   ; Output it
+                MVI A, ' '       ; ' '
+                OUT SIO_WRITE   ; Output it
+                MVI C, 1        ; Initialize text index
 
-NEXTHEX:        LDA IN,Y        ; Get character for hex test.
-                EOR #$B0        ; Map digits to $0-9.
-                CMP #$0A        ; Digit?
-                BCC DIG         ; Yes.
-                ADC #$88        ; Map letter "A"-"F" to $FA-FF.
-                CMP #$FA        ; Hex letter?
-                BCC NOTHEX      ; No, character not hex.
+BACKSPACE:      DCR C           ; Back up text index
+                JM GETLINE      ; Beyond start of line, reinitialize
 
-DIG:            ASL
-                ASL             ; Hex digit to MSD of A.
-                ASL
-                ASL
-                LDX #$04        ; Shift count.
+NEXTCHAR:       IN SIO_STATUS   ; Key ready?
+                CPI 02H
+                JZ NEXTCHAR     ; Loop until ready
+                IN SIO_READ     ; Get character      
+                STAX B          ; Add to text buffer
+                OUT SIO_WRITE   ; Display character
 
-HEXSHIFT:       ASL             ; Hex digit left, MSB to carry.
-                ROL L           ; Rotate into LSD.
-                ROL H           ; Rotate into MSD’s.
-                DEX             ; Done 4 shifts?
-                BNE HEXSHIFT    ; No, loop.
-                INY             ; Advance text index.
-                BNE NEXTHEX     ; Always taken. Check next character for hex.
+                CPI CR          ; CR?
+                JNZ NOTCR       ; No
 
-NOTHEX:         CPY YSAV        ; Check if L, H empty (no hex digits).
-                BEQ ESCAPE      ; Yes, generate ESC sequence.
-                BIT MODE        ; Test MODE byte.
-                BVC NOTSTOR     ; B6=0 STOR, 1 for XAM and BLOCK XAM
-                LDA L           ; LSD’s of hex data.
-                STA (STL,X)     ; Store at current ‘store index’.
-                INC STL         ; Increment store index.
-                BNE NEXTITEM    ; Get next item. (no carry).
-                INC STH         ; Add carry to ‘store index’ high order.
+                MVI A, LF       ; LF
+                OUT SIO_WRITE
 
-TONEXTITEM:     JMP NEXTITEM    ; Get next command item.
-RUN:            JMP (XAML)      ; Run at current XAM index.
+                MVI C, 0FFH     ; Reset text index
+                MVI A, 0        ; 0->A
+                MOV E, A        ; 0->X
+SETMODE:        STA MODE        ; 0 = XAM, ':' = STOR, '.' = BLOCK XAM
 
-NOTSTOR:        BMI XAMNEXT     ; B7=0 for XAM, 1 for BLOCK XAM.
-                LDX #$02        ; Byte count.
+BLSKIP:         INR C           ; Advance text index
+NEXTITEM:       LDAX B          ; Get character
 
-SETADR:         LDA L-1,X       ; Copy hex data to
-                STA STL-1,X     ;  ‘store index’.
-                STA XAML-1,X    ; And to ‘XAM index’.
-                DEX             ; Next of 2 bytes.
-                BNE SETADR      ; Loop unless X=0.
+                CPI CR          ; CR?
+                JZ GETLINE      ; Yes, done this line
+                
+                CPI '.'         ; "."?
+                JC BLSKIP       ; Skip delimiter
+                JZ SETMODE      ; Set BLOCK XAM mode
 
-NXTPRNT:        BNE PRDATA      ; NE means no address to print.
-                LDA #$8D        ; CR.
-                JSR ECHO        ; Output it.
-                LDA XAMH        ; ‘Examine index’ high-order byte.
-                JSR PRBYTE      ; Output it in hex format.
-                LDA XAML        ; Low-order ‘examine index’ byte.
-                JSR PRBYTE      ; Output it in hex format.
-                LDA #':'+$80    ; ":".
-                JSR ECHO        ; Output it.
+                CPI ':'         ; ":"?
+                JZ SETMODE      ; Yes Set STOR mode
 
-PRDATA:         LDA #$A0        ; Blank.
-                JSR ECHO        ; Output it.
-                LDA (XAML,X)    ; Get data byte at ‘examine index’.
-                JSR PRBYTE      ; Output it in hex format.
+                CPI 'R'         ; "R"?
+                JZ RUN          ; Yes Run user program
 
-XAMNEXT:        STX MODE        ; 0->MODE (XAM mode).
+                MOV A, E
+                STA LOW         ; 0->L
+                STA HIGH        ; 0->H
+                
+                MOV A, C
+                STA YSAV        ; Save Y for comparison
+
+NEXTHEX:        LDAX B          ; Get character for hex test
+
+                XRI 030H        ; Map digits to $0-9
+                CPI 0AH         ; Digit?
+                JC DIG          ; Yes
+                ADI 089H        ; Map letter "A"-"F" to $FA-FF
+                CPI 0FAH        ; Hex letter?
+                JC NOTHEX       ; No, character not hex
+
+DIG:            STC
+                CMC
+                RAL
+
+                STC
+                CMC
+                RAL             ; Hex digit to MSD of A
+                
+                STC
+                CMC
+                RAL
+
+                STC
+                CMC
+                RAL
+
+                MVI E, 04H      ; Shift count
+
+HEXSHIFT:       STC
+                CMC
+                RAL             ; Hex digit left, MSB to carry
+
+                PUSH PSW
+
+                LDA LOW
+                RAL             ; Rotate into LSD
+                STA LOW
+
+                LDA HIGH
+                RAL             ; Rotate into MSD’s
+                STA HIGH
+               
+                POP PSW
+
+                DCR E           ; Done 4 shifts?
+                JNZ HEXSHIFT    ; No, loop
+
+                INR C           ; Advance text index
+                JNZ NEXTHEX     ; Check next character for hex
+
+NOTHEX:         LXI H, YSAV     ; Check if L, H empty (no hex digits)
+                MOV A, C
+                CMP M
+                JZ ESCAPE       ; Yes, generate ESC sequence
+                
+                LDA MODE
+                CPI ':'         ; Test for store MODE
+                JNZ NOTSTOR
+                
+                LDA 028H        ;ASSEMBLER BUG - LOW '28H' ASSEMBLES TO '09H' - ;LOW         ; LSD’s of hex data
+                
+                LHLD STL        ; Get STORE LOW
+                MVI D, 0
+                DAD D           ; STL + X
+                MOV M, A        ; Store at current ‘store index’
+                
+                LXI H, STL      ; Get STORE LOW
+                INR M           ; Increment store index
+                
+                JNZ NEXTITEM    ; Get next item (no carry)
+
+                LXI H, STH
+                INR M           ; Add carry to ‘store index’ high order
+
+TONEXTITEM:     JMP NEXTITEM    ; Get next command item
+
+RUN:            LHLD XAML       ; Run at current XAM index
+                PCHL
+
+NOTSTOR:        CPI 0H          ; Test MODE byte
+                JNZ XAMNEXT     ; 00 for XAM, '.' for BLOCK XAM
+                
+SETADR:         LDA LOW
+                STA STL
+                STA XAML
+                
+                LDA HIGH
+                STA STH
+                STA XAMH
+               
+NXTPRNT:        JNZ PRDATA      ; NE means no address to print
+                
+                MVI A, CR       ; CR
+                OUT SIO_WRITE   ; Output it
+                
+                MVI A, LF       ; LF
+                OUT SIO_WRITE   ; Output it
+                
+                LDA XAMH        ; ‘Examine index’ high-order byte
+                CALL PRBYTE     ; Output it in hex format
+                
+                LDA XAML        ; Low-order ‘examine index’ byte
+                CALL PRBYTE     ; Output it in hex format
+                
+                MVI A, ':'      ; ":"
+                OUT SIO_WRITE   ; Output it
+
+PRDATA:         MVI A, ' '      ; Blank
+                OUT SIO_WRITE   ; Output it
+                
+                LHLD XAML
+                MVI D, 0
+                DAD D
+                MOV A, M        ; Get data byte at ‘examine index’
+                
+                CALL PRBYTE     ; Output it in hex format
+
+XAMNEXT:        LXI H, MODE     ; 0->MODE (XAM mode)
+                MVI M, 0
+
                 LDA XAML
-                CMP L           ; Compare ‘examine index’ to hex data.
+                LXI H, LOW
+                CMP M           ; Compare ‘examine index’ to hex data
+                
                 LDA XAMH
-                SBC H
-                BCS TONEXTITEM  ; Not less, so no more data to output.
-                INC XAML
-                BNE MOD8CHK     ; Increment ‘examine index’.
-                INC XAMH
+                LXI H, HIGH
+                SBB M
+                
+                JNC TONEXTITEM  ; Not less, so no more data to output
+                
+                LXI H, XAML
+                INR M
+                
+                JNZ MOD8CHK     ; Increment ‘examine index’
+                
+                LXI H, XAMH
+                INR M
 
 MOD8CHK:        LDA XAML        ; Check low-order ‘examine index’ byte
-                AND #$07        ;  For MOD 8=0
-                BPL NXTPRNT     ; Always taken.
+                ANI 07H         ; For MOD 8=0
+                JMP NXTPRNT     ; Always taken
 
-PRBYTE:         PHA             ; Save A for LSD.
-                LSR
-                LSR
-                LSR             ; MSD to LSD position.
-                LSR
-                JSR PRHEX       ; Output hex digit.
-                PLA             ; Restore A.
+PRBYTE:         PUSH PSW        ; Save A for LSD                
+                
+                STC
+                CMC
+                RAR
 
-PRHEX:          AND #$0F        ; Mask LSD for hex print.
-                ORA #'0'+$80    ; Add "0".
-                CMP #$BA        ; Digit?
-                BCC ECHO        ; Yes, output it.
-                ADC #$06        ; Add offset for letter.
+                STC
+                CMC
+                RAR
 
-ECHO:           BIT DSP         ; DA bit (B7) cleared yet?
-                BMI ECHO        ; No, wait for display.
-                STA DSP         ; Output character. Sets DA.
-                RTS             ; Return.
+                STC
+                CMC
+                RAR             ; MSD to LSD position
 
-                BRK             ; unused
-                BRK             ; unused
+                STC
+                CMC
+                RAR   
+                
+                CALL PRHEX      ; Output hex digit
+                POP PSW         ; Restore A
 
-; Interrupt Vectors
+PRHEX:          ANI 0FH         ; Mask LSD for hex print
+                ORI 030H        ; Add "0"
+                CPI 03AH        ; Digit?
+                JC ECHO         ; Yes, output it
+                ADI 07H         ; Add offset for letter
+ECHO:           OUT SIO_WRITE   ; Output character
+                RET             ; Return
 
-                .WORD $0F00     ; NMI
-                .WORD RESET     ; RESET
-                .WORD $0000     ; BRK/IRQ
