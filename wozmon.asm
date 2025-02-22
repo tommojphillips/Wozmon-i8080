@@ -45,7 +45,7 @@ ESCAPE:         MVI A, 05CH     ; '\'
 GETLINE:        MVI A, CR       ; CR
                 CALL ECHO       ; Output it
                 MVI A, LF       ; LF
-                CALL ECHO       ; Output it                
+                CALL ECHO       ; Output it
                 MVI C, 1        ; Initialize text index
 
 BACKSPACE:      DCR C           ; Back up text index
@@ -144,7 +144,7 @@ NOTHEX:         LXI H, YSAV     ; Check if L, H empty (no hex digits)
                 
                 JNZ NEXTITEM    ; Get next item (no carry)
 
-                LXI H, STH
+                INX H           ;LXI H, STH
                 INR M           ; Add carry to ‘store index’ high order
 
 TONEXTITEM:     JMP NEXTITEM    ; Get next command item
@@ -197,7 +197,7 @@ XAMNEXT:        LXI H, MODE     ; 0->MODE
                 CMP M           ; Compare ‘examine index’ to hex data
                 
                 LDA XAMH
-                LXI H, HIGH
+                INX H           ;LXI H, HIGH
                 SBB M
                 
                 JNC TONEXTITEM  ; Not less, so no more data to output
@@ -207,7 +207,7 @@ XAMNEXT:        LXI H, MODE     ; 0->MODE
                 
                 JNZ MOD8CHK     ; Increment ‘examine index’
                 
-                LXI H, XAMH
+                INX H           ;LXI H, XAMH
                 INR M
 
 MOD8CHK:        LDA XAML        ; Check low-order ‘examine index’ byte
