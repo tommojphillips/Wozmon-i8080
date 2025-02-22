@@ -135,8 +135,6 @@ NOTHEX:         LXI H, YSAV     ; Check if L, H empty (no hex digits)
                 LDA LOW         ; LSD’s of hex data
                 
                 LHLD STL        ; Get STORE LOW
-                MVI D, 0
-                DAD D           ; STL + X
                 MOV M, A        ; Store at current ‘store index’
                 
                 LXI H, STL      ; Get STORE LOW
@@ -183,8 +181,6 @@ PRDATA:         MVI A, ' '      ; Blank
                 CALL ECHO       ; Output it
                 
                 LHLD XAML
-                MVI D, 0
-                DAD D
                 MOV A, M        ; Get data byte at ‘examine index’
                 
                 CALL PRBYTE     ; Output it in hex format
