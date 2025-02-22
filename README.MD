@@ -8,6 +8,10 @@ The Woz Monitor, also known as Wozmon, is a simple memory monitor and was the sy
 
 The source code for the original Wozmon can be found here: https://github.com/jefftranter/6502/blob/master/asm/wozmon/wozmon.s
 
+ - [Usage](#usage)
+ - [Building](#building)
+ - [Running](#running-wozmon)
+
 ## Usage
 
 Wozmon operates and adheres to the same syntax as the original Wozmon on the Apple-1. The commands contain memory addresses and special characters for specifying whether to perform a read, write, or execute operation on them.
@@ -114,6 +118,7 @@ zasm.exe --asm8080 -u -w wozmon.asm wozmon.bin
 https://github.com/tommojphillips/Altair8800
 
   Loading wozmon:
+ - Assemble Wozmon with ZASM
  - Copy `wozmon.bin` next to Altair8800.exe
  - Start the emulator ( Altair8800.exe )
 
