@@ -6,7 +6,7 @@ Input/Output is currently setup for for the MITS Altair 8800.
 
 The Woz Monitor, also known as Wozmon, is a simple memory monitor and was the system software located in the 256 byte PROM on the Apple-1 from 1976. Wozmon is used to inspect and modify memory contents or to execute programs already located in memory.
 
-The source code for the original Wozmon can be found here: https://github.com/jefftranter/6502/blob/master/asm/wozmon/wozmon.s.
+The source code for the original Wozmon can be found here: https://github.com/jefftranter/6502/blob/master/asm/wozmon/wozmon.s
 
 ## Usage
 
@@ -95,41 +95,42 @@ R[JUMP]
 
 # Building
 
-This project uses The Intel 8080 macro assembler by begoon to assemble the binary. 
+This project can be assembled using `ZASM by Megatokio`. 
 
-see: https://github.com/begoon/asm8080
+#### ZASM - Z80, 8080 Assembler
 
-Use this command to assemble wozmon for the intel 8080: 
+https://github.com/Megatokio/zasm
 
 ```
-asm8080.exe wozmon.asm -lwozmon.lst
+zasm.exe --asm8080 -u -w wozmon.asm wozmon.bin
 ```
-
 
 # Running Wozmon
 
- The project can be run on either my own emulator, or Emu Studio. 
+ The project can be run using my own emulator, `Altair8800` or `Emu Studio`.
  
+#### Altair8800
+
+https://github.com/tommojphillips/Altair8800
+
+  Loading wozmon:
+ - Copy `wozmon.bin` next to Altair8800.exe
+ - Start the emulator ( Altair8800.exe )
+
+ ---
+
 #### Emu Studio
 
-  - https://github.com/emustudio/emuStudio/releases/
-  - https://www.emustudio.net/download/
+https://github.com/emustudio/emuStudio
 
   Loading wozmon:
-
+ - Start the emulator ( emuStudio.bat )
  - Select `MITS Altair8800`
  - Open and complie `wozmon.asm` in the source editor
- - Open the emulator
+ - Open the emulator tab
  - Open the device, `LSI ADM-3A termimal`
- - Start the emulator
+ - Run
 
-#### Altair8800 by tommojphillips
-
-  - https://github.com/tommojphillips/Altair8800/releases/
-
-  Loading wozmon:
-
- - Start the emulator
+ ---
 
 You should see wozmon start up with the backslash `\`
-
