@@ -1,7 +1,7 @@
 ;  The WOZ Monitor for the Apple 1
 ;  Written by Steve Wozniak in 1976
 
-; Adapted instructions for the intel 8080
+; The WOZ Monitor for the Altair 8800
 ; Written by tommojphillips in 2025
 
 ; Page 0 Variables
@@ -13,20 +13,19 @@ STH             SET 0027H           ;  Store address High
 LOW             SET 0028H           ;  Hex value parsing Low
 HIGH            SET 0029H           ;  Hex value parsing High
 YSAV            SET 002AH           ;  Used to see if hex value is given
-MODE            SET 002BH           ;  $00=XAM, $7F=STOR, $AE=BLOCK XAM
+MODE            SET 002BH           ;  0 = XAM, ':' = STOR, '.' = BLOCK XAM
 
 ; Other Variables
 
 BUFFER          SET 0200H           ; Text Input Buffer
 STACK_TOP       SET 01FEH           ; Top of stack
 
-SIO_STATUS      SET 010H            ; 2SIO Status Input Port
-SIO_READ        SET 011H            ; 2SIO Read byte Input Port
-SIO_WRITE       SET 011H            ; 2SIO Write byte Output Port
+SIO_STATUS      SET 010H            ; 88-SIO status/control port
+SIO_DATA        SET 011H            ; 88-SIO read/write port
 
-CR              SET 0DH
-LF              SET 0AH
-ESC             SET 01BH
+CR              SET 0DH             ; Carriage return char
+LF              SET 0AH             ; Line feed char
+ESC             SET 01BH            ; Escape char
 
                 ORG 0D000H
 
@@ -51,10 +50,10 @@ GETLINE:        MVI A, CR       ; CR
 BACKSPACE:      DCR C           ; Back up text index
                 JM GETLINE      ; Beyond start of line, reinitialize
 
-NEXTCHAR:       IN SIO_STATUS   ; Key ready?
-                CPI 02H
+NEXTCHAR:       IN SIO_STATUS   ; Input device ready?
+                ANI 020H        ; DATA_AVAILABLE
                 JZ NEXTCHAR     ; Loop until ready
-                IN SIO_READ     ; Get character      
+                IN SIO_DATA     ; Get character
                 STAX B          ; Add to text buffer
                 CALL ECHO       ; Output character
 
@@ -224,5 +223,11 @@ PRHEX:          ANI 0FH         ; Mask LSD for hex print
                 CPI 03AH        ; Digit?
                 JC ECHO         ; Yes, output it
                 ADI 07H         ; Add offset for letter
-ECHO:           OUT SIO_WRITE   ; Output character
+
+ECHO:           PUSH PSW        ; Save character
+ECHO_LOOP:      IN SIO_STATUS   ; Output device ready?
+                ANI 080H        ; OUTPUT_DEVICE_READY bit
+                JNZ ECHO_LOOP   ; Loop until ready
+                POP PSW         ; Restore character
+                OUT SIO_DATA    ; Output character
                 RET             ; Return

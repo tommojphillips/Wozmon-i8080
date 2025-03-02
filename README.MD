@@ -118,9 +118,12 @@ zasm.exe --asm8080 -u -w wozmon.asm wozmon.bin
 https://github.com/tommojphillips/Altair8800
 
   Loading wozmon:
- - Assemble Wozmon with ZASM
- - Copy `wozmon.bin` next to Altair8800.exe
- - Start the emulator ( Altair8800.exe )
+ - Assemble Wozmon with ZASM or download a pre-compiled binary from [releases](https://github.com/tommojphillips/Wozmon-i8080/releases)
+ - Use the following command to load wozmon at address `0xD000`
+
+```
+ Altair8800.exe -oD000 -fwozmon.bin
+```
 
  ---
 
