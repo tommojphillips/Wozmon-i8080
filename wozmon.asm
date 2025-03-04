@@ -1,8 +1,7 @@
-;  The WOZ Monitor for the Apple 1
-;  Written by Steve Wozniak in 1976
-
-; The WOZ Monitor for the Altair 8800
+; The WOZ Monitor for the MITS Altair 8800
 ; Written by tommojphillips in 2025
+; Github: https://github.com/tommojphillips/
+; Originally Written by Steve Wozniak in 1976 for the Apple 1
 
 ; Page 0 Variables
 
@@ -51,7 +50,7 @@ BACKSPACE:      DCR C           ; Back up text index
                 JM GETLINE      ; Beyond start of line, reinitialize
 
 NEXTCHAR:       IN SIO_STATUS   ; Input device ready?
-                ANI 020H        ; DATA_AVAILABLE
+                ANI 020H        ; DATA_AVAILABLE bit
                 JZ NEXTCHAR     ; Loop until ready
                 IN SIO_DATA     ; Get character
                 STAX B          ; Add to text buffer
@@ -144,7 +143,7 @@ NOTHEX:         LXI H, YSAV     ; Check if L, H empty (no hex digits)
                 INX H           ;LXI H, STH
                 INR M           ; Add carry to ‘store index’ high order
 
-TONEXTITEM:     JMP NEXTITEM    ; Get next command item
+                JMP NEXTITEM    ; Get next command item
 
 RUN:            LHLD XAML       ; Run at current XAM index
                 PCHL
@@ -195,7 +194,7 @@ XAMNEXT:        LXI H, MODE     ; 0->MODE
                 INX H           ;LXI H, HIGH
                 SBB M
                 
-                JNC TONEXTITEM  ; Not less, so no more data to output
+                JNC NEXTITEM    ; Not less, so no more data to output
                 
                 LXI H, XAML
                 INR M
