@@ -51,7 +51,7 @@ BACKSPACE:      DCR C           ; Back up text index
 
 NEXTCHAR:       IN SIO_STATUS   ; Input device ready?
                 ANI 020H        ; DATA_AVAILABLE bit
-                JZ NEXTCHAR     ; Loop until ready
+                JZ NEXTCHAR     ; Loop until data available
                 IN SIO_DATA     ; Get character
                 STAX B          ; Add to text buffer
                 CALL ECHO       ; Output character
@@ -214,6 +214,7 @@ PRBYTE:         PUSH PSW        ; Save A for LSD
                 RAR             ; MSD to LSD position
                 RAR
                 ANI 0FH         ; Clear top nibble
+                
                 CALL PRHEX      ; Output hex digit
                 POP PSW         ; Restore A
 
