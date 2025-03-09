@@ -33,7 +33,7 @@ RESET:          LXI SP, STACK_TOP
 
 NOTCR:          CPI '_'         ; '_'?
                 JZ BACKSPACE    ; Yes
-                CPI ESC         ; 'ESC'?
+                CPI 03H        ; 'CTRL-C'?
                 JZ ESCAPE       ; Yes
                 INR C           ; Advance text index
                 JP NEXTCHAR     ; Auto ESC if > 127
