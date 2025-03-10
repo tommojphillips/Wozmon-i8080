@@ -122,7 +122,7 @@ https://github.com/tommojphillips/Altair8800
  - Use the following command to load wozmon at address `0xD000`
 
 ```
- Altair8800.exe -oD000 -fwozmon.bin
+ Altair8800.exe -oD000 wozmon.bin
 ```
 
  ---
