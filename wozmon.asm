@@ -108,12 +108,14 @@ HEXSHIFT:       STC
                 CMC
                 RAL             ; Hex digit left, MSB to carry
                 PUSH PSW
-                LDA LOW
+                LXI H, LOW
+                MOV A, M
                 RAL             ; Rotate into LSD
-                STA LOW
-                LDA HIGH
+                MOV M, A
+                INX H           ; LXI H, HIGH
+                MOV A, M
                 RAL             ; Rotate into MSD’s
-                STA HIGH
+                MOV M, A
                 POP PSW
                 DCR E           ; Done 4 shifts?
                 JNZ HEXSHIFT    ; No, loop
