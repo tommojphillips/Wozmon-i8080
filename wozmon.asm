@@ -5,28 +5,28 @@
 
 ; Page 0 Variables
 
-XAML            SET 0024H           ;  Last "opened" location Low
-XAMH            SET 0025H           ;  Last "opened" location High
-STL             SET 0026H           ;  Store address Low
-STH             SET 0027H           ;  Store address High
-LOW             SET 0028H           ;  Hex value parsing Low
-HIGH            SET 0029H           ;  Hex value parsing High
-YSAV            SET 002AH           ;  Used to see if hex value is given
-MODE            SET 002BH           ;  0 = XAM, ':' = STOR, '.' = BLOCK XAM
+XAML            equ 0024H           ;  Last "opened" location Low
+XAMH            equ 0025H           ;  Last "opened" location High
+STL             equ 0026H           ;  Store address Low
+STH             equ 0027H           ;  Store address High
+LOW             equ 0028H           ;  Hex value parsing Low
+HIGH            equ 0029H           ;  Hex value parsing High
+YSAV            equ 002AH           ;  Used to see if hex value is given
+MODE            equ 002BH           ;  0 = XAM, ':' = STOR, '.' = BLOCK XAM
 
 ; Other Variables
 
-BUFFER          SET 0200H           ; Text Input Buffer
-STACK_TOP       SET 01FEH           ; Top of stack
+BUFFER          equ 0200H           ; Text Input Buffer
+STACK_TOP       equ 01FEH           ; Top of stack
 
-SIO_STATUS      SET 010H            ; 88-SIO status/control port
-SIO_DATA        SET 011H            ; 88-SIO read/write port
+SIO_STATUS      equ 010H            ; 88-SIO status/control port
+SIO_DATA        equ 011H            ; 88-SIO read/write port
 
-CR              SET 0DH             ; Carriage return char
-LF              SET 0AH             ; Line feed char
-ESC             SET 01BH            ; Escape char
+CR              equ 0DH             ; Carriage return char
+LF              equ 0AH             ; Line feed char
+ESC             equ 01BH            ; Escape char
 
-                ORG 0D000H
+                org 0D000H
 
 RESET:          LXI SP, STACK_TOP
                 LXI B, BUFFER + 07FH    ; BC =  200H + 7F
