@@ -226,10 +226,5 @@ PRHEX:          ANI 0FH         ; Mask LSD for hex print
                 JC ECHO         ; Yes, output it
                 ADI 07H         ; Add offset for letter
 
-ECHO:           PUSH PSW        ; Save character
-ECHO_LOOP:      IN SIO_STATUS   ; Output device ready?
-                RLC             ; OUTPUT_DEVICE_READY bit
-                JC ECHO_LOOP    ; Loop until ready
-                POP PSW         ; Restore character
-                OUT SIO_DATA    ; Output character
+ECHO:           OUT SIO_DATA    ; Output character
                 RET             ; Return
